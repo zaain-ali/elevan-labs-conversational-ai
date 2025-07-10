@@ -1,0 +1,813 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ElevenLabs Real-time AI Test</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family:
+          "Inter",
+          -apple-system,
+          BlinkMacSystemFont,
+          sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+      }
+
+      .container {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        border-radius: 20px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        width: 100%;
+        max-width: 800px;
+        height: 600px;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+
+      .header {
+        background: linear-gradient(135deg, #2c3e50, #3498db);
+        color: white;
+        padding: 20px;
+        text-align: center;
+        position: relative;
+      }
+
+      .header h1 {
+        font-size: 1.8rem;
+        font-weight: 600;
+        margin-bottom: 5px;
+      }
+
+      .header p {
+        opacity: 0.9;
+        font-size: 0.9rem;
+      }
+
+      .connection-status {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.8rem;
+      }
+
+      .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #e74c3c;
+        animation: pulse 2s infinite;
+      }
+
+      .status-dot.connected {
+        background: #27ae60;
+      }
+
+      @keyframes pulse {
+        0% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.5;
+        }
+        100% {
+          opacity: 1;
+        }
+      }
+
+      .chat-container {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+
+      .messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+      }
+
+      .message {
+        max-width: 80%;
+        padding: 12px 16px;
+        border-radius: 18px;
+        word-wrap: break-word;
+        animation: fadeIn 0.3s ease-out;
+      }
+
+      .message.user {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        align-self: flex-end;
+        border-bottom-right-radius: 4px;
+      }
+
+      .message.ai {
+        background: #f8f9fa;
+        color: #2c3e50;
+        align-self: flex-start;
+        border-bottom-left-radius: 4px;
+        border: 1px solid #e9ecef;
+      }
+
+      .message.system {
+        background: #fff3cd;
+        color: #856404;
+        align-self: center;
+        font-size: 0.9rem;
+        border-radius: 12px;
+        max-width: 60%;
+        text-align: center;
+      }
+
+      .message.error {
+        background: #f8d7da;
+        color: #721c24;
+        align-self: center;
+        border-radius: 12px;
+        max-width: 60%;
+        text-align: center;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .input-container {
+        padding: 20px;
+        background: white;
+        border-top: 1px solid #e9ecef;
+        display: flex;
+        gap: 15px;
+        align-items: center;
+      }
+
+      .input-wrapper {
+        flex: 1;
+        position: relative;
+      }
+
+      #messageInput {
+        width: 100%;
+        padding: 12px 16px;
+        border: 2px solid #e9ecef;
+        border-radius: 25px;
+        font-size: 1rem;
+        outline: none;
+        transition: all 0.3s ease;
+      }
+
+      #messageInput:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+      }
+
+      .send-button {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        border: none;
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .send-button:hover {
+        transform: scale(1.05);
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+      }
+
+      .send-button:active {
+        transform: scale(0.95);
+      }
+
+      .send-button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      .typing-indicator {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #6c757d;
+        font-style: italic;
+        padding: 12px 16px;
+        background: #f8f9fa;
+        border-radius: 18px;
+        align-self: flex-start;
+        max-width: 80%;
+      }
+
+      .typing-dots {
+        display: flex;
+        gap: 3px;
+      }
+
+      .typing-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #6c757d;
+        animation: typing 1.4s infinite;
+      }
+
+      .typing-dot:nth-child(2) {
+        animation-delay: 0.2s;
+      }
+      .typing-dot:nth-child(3) {
+        animation-delay: 0.4s;
+      }
+
+      @keyframes typing {
+        0%,
+        60%,
+        100% {
+          opacity: 0.3;
+        }
+        30% {
+          opacity: 1;
+        }
+      }
+
+      .config-panel {
+        background: white;
+        border-top: 1px solid #e9ecef;
+        padding: 15px 20px;
+        display: flex;
+        gap: 15px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+
+      .config-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.9rem;
+      }
+
+      .config-item label {
+        color: #6c757d;
+        font-weight: 500;
+      }
+
+      .config-item input {
+        padding: 5px 10px;
+        border: 1px solid #e9ecef;
+        border-radius: 6px;
+        font-size: 0.9rem;
+      }
+
+      .toggle-config {
+        background: none;
+        border: none;
+        color: #667eea;
+        font-size: 0.9rem;
+        cursor: pointer;
+        text-decoration: underline;
+      }
+
+      .config-panel.hidden {
+        display: none;
+      }
+
+      /* Responsive design */
+      @media (max-width: 768px) {
+        .container {
+          height: 100vh;
+          border-radius: 0;
+        }
+
+        .header h1 {
+          font-size: 1.5rem;
+        }
+
+        .connection-status {
+          position: static;
+          justify-content: center;
+          margin-top: 10px;
+        }
+
+        .config-panel {
+          flex-direction: column;
+          align-items: stretch;
+        }
+
+        .config-item {
+          justify-content: space-between;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>ElevenLabs Real-time AI</h1>
+        <p>Test your conversational AI integration</p>
+        <div class="connection-status">
+          <div class="status-dot" id="statusDot"></div>
+          <span id="statusText">Disconnected</span>
+        </div>
+      </div>
+
+      <div class="chat-container">
+        <div class="messages" id="messages">
+          <div class="message system">
+            Welcome! Connect to your ElevenLabs WebSocket to start testing
+            real-time conversations.
+          </div>
+        </div>
+      </div>
+
+      <div class="config-panel" id="configPanel">
+        <div class="config-item">
+          <label for="wsUrl">WebSocket URL:</label>
+          <input
+            type="text"
+            id="wsUrl"
+            placeholder="wss://api.elevenlabs.io/v1/convai/conversation"
+            style="width: 300px"
+          />
+        </div>
+        <div class="config-item">
+          <label for="apiKey">API Key:</label>
+          <input
+            type="password"
+            id="apiKey"
+            placeholder="Your ElevenLabs API Key"
+            style="width: 200px"
+          />
+        </div>
+        <div class="config-item">
+          <label for="agentId">Agent ID:</label>
+          <input
+            type="text"
+            id="agentId"
+            placeholder="Your Agent ID"
+            style="width: 200px"
+          />
+        </div>
+        <button
+          onclick="toggleConnection()"
+          id="connectBtn"
+          style="
+            padding: 8px 16px;
+            background: #27ae60;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+          "
+        >
+          Connect
+        </button>
+      </div>
+
+      <div class="input-container">
+        <button class="toggle-config" onclick="toggleConfig()">
+          ⚙️ Settings
+        </button>
+        <button
+          class="audio-control"
+          onclick="stopCurrentAudio()"
+          id="stopAudioBtn"
+          style="
+            padding: 8px 12px;
+            background: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-right: 10px;
+            display: none;
+          "
+        >
+          🔇 Stop Audio
+        </button>
+        <button
+          class="audio-control"
+          onclick="downloadLastAudio()"
+          id="downloadAudioBtn"
+          style="
+            padding: 8px 12px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-right: 10px;
+            display: none;
+          "
+        >
+          📥 Download Audio
+        </button>
+        <button
+          class="audio-control"
+          onclick="setVolume(0.5)"
+          id="volumeHalfBtn"
+          style="
+            padding: 8px 12px;
+            background: #f39c12;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-right: 10px;
+            display: none;
+          "
+        >
+          🔉 50%
+        </button>
+        <button
+          class="audio-control"
+          onclick="setVolume(1.0)"
+          id="volumeFullBtn"
+          style="
+            padding: 8px 12px;
+            background: #27ae60;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-right: 10px;
+            display: none;
+          "
+        >
+          🔊 100%
+        </button>
+        <div class="input-wrapper">
+          <input
+            type="text"
+            id="messageInput"
+            placeholder="Type your message..."
+            disabled
+          />
+        </div>
+        <button
+          class="send-button"
+          id="sendButton"
+          onclick="sendMessage()"
+          disabled
+        >
+          ➤
+        </button>
+      </div>
+    </div>
+
+    <script>
+      let ws = null;
+      let isConnected = false;
+      let isTyping = false;
+      let messageQueue = [];
+      let currentAudio = null; // Track current audio for controls
+      let audioContext = null; // Global audio context
+      let analyser = null; // Audio analyser for visualization
+      let audioChunks = [];
+      let audioTimeout = null;
+      let isPlaying = false;
+      // DOM elements
+      const messages = document.getElementById("messages");
+      const messageInput = document.getElementById("messageInput");
+      const sendButton = document.getElementById("sendButton");
+      const statusDot = document.getElementById("statusDot");
+      const statusText = document.getElementById("statusText");
+      const configPanel = document.getElementById("configPanel");
+      const connectBtn = document.getElementById("connectBtn");
+      const stopAudioBtn = document.getElementById("stopAudioBtn");
+      const downloadAudioBtn = document.getElementById("downloadAudioBtn");
+      const volumeHalfBtn = document.getElementById("volumeHalfBtn");
+      const volumeFullBtn = document.getElementById("volumeFullBtn");
+
+      // Initialize
+      messageInput.addEventListener("keypress", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          sendMessage();
+        }
+      });
+
+      function toggleConfig() {
+        configPanel.classList.toggle("hidden");
+      }
+
+      function addMessage(content, type = "user") {
+        const messageDiv = document.createElement("div");
+        messageDiv.className = `message ${type}`;
+        messageDiv.textContent = content;
+        messages.appendChild(messageDiv);
+        messages.scrollTop = messages.scrollHeight;
+      }
+
+      function showTypingIndicator() {
+        if (isTyping) return;
+        isTyping = true;
+
+        const typingDiv = document.createElement("div");
+        typingDiv.className = "typing-indicator";
+        typingDiv.id = "typingIndicator";
+        typingDiv.innerHTML = `
+                AI is responding...
+                <div class="typing-dots">
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                </div>
+            `;
+        messages.appendChild(typingDiv);
+        messages.scrollTop = messages.scrollHeight;
+      }
+
+      function hideTypingIndicator() {
+        if (!isTyping) return;
+        isTyping = false;
+
+        const typingIndicator = document.getElementById("typingIndicator");
+        if (typingIndicator) {
+          typingIndicator.remove();
+        }
+      }
+
+      function updateConnectionStatus(connected) {
+        isConnected = connected;
+        statusDot.className = `status-dot ${connected ? "connected" : ""}`;
+        statusText.textContent = connected ? "Connected" : "Disconnected";
+        messageInput.disabled = !connected;
+        sendButton.disabled = !connected;
+        connectBtn.textContent = connected ? "Disconnect" : "Connect";
+        connectBtn.style.background = connected ? "#e74c3c" : "#27ae60";
+      }
+
+      function toggleConnection() {
+        if (isConnected) {
+          disconnect();
+        } else {
+          connect();
+        }
+      }
+
+      function connect() {
+        const wsUrl = "wss://api.elevenlabs.io/v1/convai/conversation";
+        const apiKey = "sk_40f40071b685f49b8a7b5a9049b08899d6f9fd35c98801c8";
+        const agentId = "agent_01jzcbnn4nfmd9shw0jb3tg7x6";
+
+        if (!wsUrl || !apiKey || !agentId) {
+          addMessage("Please fill in all configuration fields", "error");
+          return;
+        }
+
+        try {
+          // For ElevenLabs Conversational AI WebSocket
+          const fullUrl = `${wsUrl}?agent_id=${agentId}`;
+          ws = new WebSocket(fullUrl);
+
+          ws.onopen = () => {
+            updateConnectionStatus(true);
+            addMessage("Connected to ElevenLabs Conversational AI", "system");
+
+            // Send authentication message
+            const authMessage = {
+              type: "authentication",
+              api_key: apiKey,
+            };
+            ws.send(JSON.stringify(authMessage));
+          };
+
+          ws.onmessage = (event) => {
+            try {
+              const data = JSON.parse(event.data);
+              handleWebSocketMessage(data);
+            } catch (error) {
+              console.error("Error parsing WebSocket message:", error);
+              addMessage("Error parsing server response", "error");
+            }
+          };
+
+          ws.onclose = (socket) => {
+            console.log({ socket });
+            updateConnectionStatus(false);
+            addMessage("Disconnected from server", "system");
+            hideTypingIndicator();
+          };
+
+          ws.onerror = (error) => {
+            console.log("WebSocket error:", { error });
+            addMessage("Connection error occurred", "error");
+            updateConnectionStatus(false);
+          };
+        } catch (error) {
+          console.log("Connection error:", error);
+          addMessage("Failed to connect: " + error.message, "error");
+        }
+      }
+
+      function disconnect() {
+        if (ws) {
+          ws.close();
+          ws = null;
+        }
+        updateConnectionStatus(false);
+        hideTypingIndicator();
+      }
+
+      function handleWebSocketMessage(data) {
+        switch (data.type) {
+          case "authentication":
+            if (data.status === "authenticated") {
+              addMessage("Authentication successful", "system");
+            } else {
+              addMessage("Authentication failed", "error");
+            }
+            break;
+
+          case "conversation_initiation_metadata":
+            addMessage("Conversation initialized", "system");
+            break;
+
+          case "audio":
+            // Handle audio response if needed
+            hideTypingIndicator();
+            const audioData = data.audio_event.audio_base_64;
+            audioChunks.push(audioData);
+            playNextChunk();
+            addMessage("🔊 Playing audio response...", "ai");
+            break;
+
+          case "message":
+            hideTypingIndicator();
+            addMessage(
+              data.message || data.content || "Message received",
+              "ai"
+            );
+            break;
+
+          case "ping":
+            // Respond to ping with pong
+            // ws.send(
+            //   JSON.stringify({
+            //     type: "pong",
+            //     ping_event: { event_id: data.ping_event.event_id },
+            //   })
+            // );
+            break;
+
+          case "user_transcript":
+            // Handle user transcript if needed
+            break;
+
+          case "agent_response":
+            hideTypingIndicator();
+            if (data.agent_response) {
+              addMessage(data.agent_response, "ai");
+            }
+            break;
+
+          case "error":
+            hideTypingIndicator();
+            addMessage(`Error: ${data.message || "Unknown error"}`, "error");
+            break;
+
+          default:
+            console.log("Unknown message type:", data.type);
+            if (data.message || data.content) {
+              hideTypingIndicator();
+              addMessage(data.message || data.content, "ai");
+            }
+        }
+      }
+
+      function playNextChunk() {
+        if (isPlaying || audioChunks.length === 0) return;
+        isPlaying = true;
+        const base64String = audioChunks.shift();
+        // PCM example:
+        try {
+          const { arrayBuffer, length } = base64ToArrayBuffer(base64String);
+          const sampleRate = 18000; // or your actual sample rate
+          const audioBuffer = createAudioBuffer(
+            arrayBuffer,
+            length,
+            sampleRate
+          );
+
+          if (!audioContext) {
+            audioContext = new (window.AudioContext ||
+              window.webkitAudioContext)();
+          }
+          const source = audioContext.createBufferSource();
+          source.buffer = audioBuffer;
+          source.connect(audioContext.destination);
+          source.onended = () => {
+            isPlaying = false;
+            playNextChunk(); // Play the next chunk
+          };
+          source.start();
+        } catch (e) {
+          addMessage("Error decoding or playing audio", "error");
+          console.error(e);
+          isPlaying = false;
+          playNextChunk(); // Skip to next chunk
+        }
+      }
+
+      function base64ToArrayBuffer(base64) {
+        const binaryString = atob(base64);
+        const arrayBuffer = new ArrayBuffer(binaryString.length);
+        const uint8Array = new Uint8Array(arrayBuffer);
+        for (let i = 0; i < binaryString.length; i++) {
+          uint8Array[i] = binaryString.charCodeAt(i);
+        }
+        return { arrayBuffer, length: uint8Array.length };
+      }
+
+      function createAudioBuffer(arrayBuffer, length) {
+        if (!audioContext) {
+          audioContext = new (window.AudioContext ||
+            window.webkitAudioContext)();
+        }
+        const data = new DataView(arrayBuffer);
+        const audioBuffer = audioContext.createBuffer(1, length / 2, 16000); // 1 channel, 44.1kHz
+        const channelData = audioBuffer.getChannelData(0);
+        for (let i = 0; i < data.byteLength; i += 2) {
+          const sample = data.getInt16(i, true);
+          channelData[i / 2] = sample / 32768;
+        }
+        return audioBuffer;
+      }
+
+      function sendMessage() {
+        const message = messageInput.value.trim();
+        if (!message || !isConnected) return;
+
+        // Add user message to chat
+        addMessage(message, "user");
+        messageInput.value = "";
+
+        // Show typing indicator
+        showTypingIndicator();
+
+        // Send message via WebSocket
+        try {
+          const messageData = {
+            type: "user_message",
+            text: message,
+          };
+
+          ws.send(JSON.stringify(messageData));
+        } catch (error) {
+          console.error("Error sending message:", error);
+          addMessage("Error sending message", "error");
+          hideTypingIndicator();
+        }
+      }
+
+      // Auto-scroll to bottom when new messages arrive
+      const observer = new MutationObserver(() => {
+        messages.scrollTop = messages.scrollHeight;
+      });
+
+      observer.observe(messages, { childList: true });
+
+      // Set default values
+      // document.getElementById('wsUrl').value = '';
+
+      // Start with config panel visible
+      configPanel.classList.remove("hidden");
+    </script>
+  </body>
+</html>

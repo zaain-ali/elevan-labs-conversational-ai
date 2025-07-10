@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ElevenLabs Conversational AI Client</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-weight: 300;
+            font-size: 2.5em;
+        }
+        
+        .status {
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            font-weight: 500;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+        
+        .status.disconnected {
+            background: #ffebee;
+            color: #c62828;
+            border: 2px solid #ffcdd2;
+        }
+        
+        .status.connected {
+            background: #e8f5e8;
+            color: #2e7d32;
+            border: 2px solid #a5d6a7;
+        }
+        
+        .status.connecting {
+            background: #fff3e0;
+            color: #ef6c00;
+            border: 2px solid #ffcc02;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin: 30px 0;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 120px;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+        }
+        
+        .btn-success {
+            background: linear-gradient(45deg, #4caf50, #45a049);
+            color: white;
+        }
+        
+        .btn-danger {
+            background: linear-gradient(45deg, #f44336, #da190b);
+            color: white;
+        }
+        
+        .btn-warning {
+            background: linear-gradient(45deg, #ff9800, #f57c00);
+            color: white;
+        }
+        
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .audio-controls {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin: 20px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 15px;
+        }
+        
+        .text-input {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        
+        input[type="text"] {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 25px;
+            font-size: 16px;
+            outline: none;
+            transition: border-color 0.3s ease;
+        }
+        
+        input[type="text"]:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .messages {
+            height: 300px;
+            overflow-y: auto;
+            border: 2px solid #e0e0e0;
+            border-radius: 15px;
+            padding: 20px;
+            background: #fafafa;
+            margin: 20px 0;
+        }
+        
+        .message {
+            margin: 10px 0;
+            padding: 12px 16px;
+            border-radius: 18px;
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+        
+        .message.user {
+            background: #667eea;
+            color: white;
+            margin-left: auto;
+        }
+        
+        .message.ai {
+            background: #e3f2fd;
+            color: #1976d2;
+            margin-right: auto;
+        }
+        
+        .message.system {
+            background: #fff3e0;
+            color: #ef6c00;
+            text-align: center;
+            font-style: italic;
+            margin: 5px auto;
+            font-size: 14px;
+        }
+        
+        .recording-indicator {
+            display: none;
+            align-items: center;
+            gap: 10px;
+            color: #f44336;
+            font-weight: 500;
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .recording-indicator.active {
+            display: flex;
+        }
+        
+        .audio-visualizer {
+            width: 100px;
+            height: 30px;
+            background: #f0f0f0;
+            border-radius: 15px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .audio-wave {
+            height: 100%;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.1s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎙️ ElevenLabs AI Chat</h1>
+        
+        <div id="status" class="status disconnected">
+            Disconnected
+        </div>
+        
+        <div class="controls">
+            <button id="connectBtn" class="btn-primary">Connect</button>
+            <button id="disconnectBtn" class="btn-danger" disabled>Disconnect</button>
+        </div>
+        
+        <div class="audio-controls">
+            <button id="startRecording" class="btn-success" disabled>🎤 Start Recording</button>
+            <button id="stopRecording" class="btn-warning" disabled>⏹️ Stop Recording</button>
+            <div class="recording-indicator" id="recordingIndicator">
+                <div style="width: 10px; height: 10px; background: #f44336; border-radius: 50%;"></div>
+                Recording...
+            </div>
+            <div class="audio-visualizer">
+                <div class="audio-wave" id="audioWave"></div>
+            </div>
+        </div>
+        
+        <div class="text-input">
+            <input type="text" id="textInput" placeholder="Type your message here..." disabled>
+            <button id="sendText" class="btn-primary" disabled>Send</button>
+        </div>
+        
+        <div class="messages" id="messages"></div>
+    </div>
+
+    <script>
+        class ElevenLabsClient {
+            constructor() {
+                this.ws = null;
+                this.isConnected = false;
+                this.conversationId = null;
+                this.mediaRecorder = null;
+                this.audioChunks = [];
+                this.audioContext = null;
+                this.analyser = null;
+                this.microphone = null;
+                
+                this.initializeElements();
+                this.setupEventListeners();
+            }
+            
+            initializeElements() {
+                this.statusEl = document.getElementById('status');
+                this.connectBtn = document.getElementById('connectBtn');
+                this.disconnectBtn = document.getElementById('disconnectBtn');
+                this.startRecordingBtn = document.getElementById('startRecording');
+                this.stopRecordingBtn = document.getElementById('stopRecording');
+                this.textInput = document.getElementById('textInput');
+                this.sendTextBtn = document.getElementById('sendText');
+                this.messagesEl = document.getElementById('messages');
+                this.recordingIndicator = document.getElementById('recordingIndicator');
+                this.audioWave = document.getElementById('audioWave');
+            }
+            
+            setupEventListeners() {
+                this.connectBtn.addEventListener('click', () => this.connect());
+                this.disconnectBtn.addEventListener('click', () => this.disconnect());
+                this.startRecordingBtn.addEventListener('click', () => this.startRecording());
+                this.stopRecordingBtn.addEventListener('click', () => this.stopRecording());
+                this.sendTextBtn.addEventListener('click', () => this.sendText());
+                
+                this.textInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        this.sendText();
+                    }
+                });
+            }
+            
+            connect() {
+                try {
+                    this.updateStatus('Connecting...', 'connecting');
+                    this.ws = new WebSocket('ws://localhost:3000');
+                    
+                    this.ws.onopen = () => {
+                        this.isConnected = true;
+                        this.updateStatus('Connected', 'connected');
+                        this.updateButtonStates();
+                        
+                        // Start conversation
+                        this.conversationId = 'conv_' + Date.now();
+                        this.sendMessage({
+                            type: 'start_conversation',
+                            conversationId: this.conversationId
+                        });
+                        
+                        this.addMessage('Connected to ElevenLabs AI', 'system');
+                    };
+                    
+                    this.ws.onmessage = (event) => {
+                        const data = JSON.parse(event.data);
+                        this.handleMessage(data);
+                    };
+                    
+                    this.ws.onclose = () => {
+                        this.isConnected = false;
+                        this.updateStatus('Disconnected', 'disconnected');
+                        this.updateButtonStates();
+                        this.addMessage('Disconnected from server', 'system');
+                    };
+                    
+                    this.ws.onerror = (error) => {
+                        console.error('WebSocket error:', error);
+                        this.addMessage('Connection error occurred', 'system');
+                    };
+                    
+                } catch (error) {
+                    console.error('Failed to connect:', error);
+                    this.updateStatus('Connection failed', 'disconnected');
+                }
+            }
+            
+            disconnect() {
+                if (this.ws) {
+                    this.sendMessage({
+                        type: 'end_conversation',
+                        conversationId: this.conversationId
+                    });
+                    this.ws.close();
+                }
+                this.stopRecording();
+            }
+            
+            handleMessage(data) {
+                switch (data.type) {
+                    case 'conversation_started':
+                        this.addMessage('Conversation started', 'system');
+                        break;
+                        
+                    case 'elevenlabs_message':
+                        this.handleElevenLabsMessage(data.data);
+                        break;
+                        
+                    case 'error':
+                        this.addMessage(`Error: ${data.message}`, 'system');
+                        break;
+                }
+            }
+            
+            handleElevenLabsMessage(message) {
+                console.log('ElevenLabs message:', message);
+                
+                if (message.type === 'audio') {
+                    this.playAudioResponse(message.audio);
+                } else if (message.type === 'message') {
+                    this.addMessage(message.message, 'ai');
+                } else if (message.type === 'conversation_initiation_metadata') {
+                    this.addMessage('AI is ready to chat!', 'system');
+                }
+            }
+            
+            async startRecording() {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    this.mediaRecorder = new MediaRecorder(stream);
+                    this.audioChunks = [];
+                    
+                    // Setup audio visualization
+                    this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    this.analyser = this.audioContext.createAnalyser();
+                    this.microphone = this.audioContext.createMediaStreamSource(stream);
+                    this.microphone.connect(this.analyser);
+                    
+                    this.mediaRecorder.ondataavailable = (event) => {
+                        this.audioChunks.push(event.data);
+                    };
+                    
+                    this.mediaRecorder.onstop = async () => {
+                        const audioBlob = new Blob(this.audioChunks, { type: 'audio/wav' });
+                        const audioBase64 = await this.blobToBase64(audioBlob);
+                        
+                        this.sendMessage({
+                            type: 'send_audio',
+                            audio: audioBase64.split(',')[1] // Remove data:audio/wav;base64, prefix
+                        });
+                        
+                        stream.getTracks().forEach(track => track.stop());
+                    };
+                    
+                    this.mediaRecorder.start();
+                    this.startRecordingBtn.disabled = true;
+                    this.stopRecordingBtn.disabled = false;
+                    this.recordingIndicator.classList.add('active');
+                    
+                    this.visualizeAudio();
+                    
+                } catch (error) {
+                    console.error('Failed to start recording:', error);
+                    this.addMessage('Microphone access denied', 'system');
+                }
+            }
+            
+            stopRecording() {
+                if (this.mediaRecorder && this.mediaRecorder.state === 'recording') {
+                    this.mediaRecorder.stop();
+                    this.startRecordingBtn.disabled = false;
+                    this.stopRecordingBtn.disabled = true;
+                    this.recordingIndicator.classList.remove('active');
+                    
+                    if (this.audioContext) {
+                        this.audioContext.close();
+                    }
+                }
+            }
+            
+            sendText() {
+                const text = this.textInput.value.trim();
+                if (text && this.isConnected) {
+                    this.sendMessage({
+                        type: 'send_text',
+                        text: text
+                    });
+                    
+                    this.addMessage(text, 'user');
+                    this.textInput.value = '';
+                }
+            }
+            
+            sendMessage(message) {
+                if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                    this.ws.send(JSON.stringify(message));
+                }
+            }
+            
+            addMessage(text, type) {
+                const messageEl = document.createElement('div');
+                messageEl.className = `message ${type}`;
+                messageEl.textContent = text;
+                this.messagesEl.appendChild(messageEl);
+                this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
+            }
+            
+            playAudioResponse(audioBase64) {
+                const audio = new Audio(`data:audio/wav;base64,${audioBase64}`);
+                audio.play().catch(error => {
+                    console.error('Failed to play audio:', error);
+                });
+            }
+            
+            visualizeAudio() {
+                if (!this.analyser) return;
+                
+                const dataArray = new Uint8Array(this.analyser.frequencyBinCount);
+                
+                const animate = () => {
+                    if (this.recordingIndicator.classList.contains('active')) {
+                        this.analyser.getByteFrequencyData(dataArray);
+                        
+                        const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
+                        const percentage = (average / 255) * 100;
+                        
+                        this.audioWave.style.width = `${percentage}%`;
+                        
+                        requestAnimationFrame(animate);
+                    }
+                };
+                
+                animate();
+            }
+            
+            blobToBase64(blob) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(blob);
+                });
+            }
+            
+            updateStatus(text, className) {
+                this.statusEl.textContent = text;
+                this.statusEl.className = `status ${className}`;
+            }
+            
+            updateButtonStates() {
+                this.connectBtn.disabled = this.isConnected;
+                this.disconnectBtn.disabled = !this.isConnected;
+                this.startRecordingBtn.disabled = !this.isConnected;
+                this.textInput.disabled = !this.isConnected;
+                this.sendTextBtn.disabled = !this.isConnected;
+            }
+        }
+        
+        // Initialize the client when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new ElevenLabsClient();
+        });
+    </script>
+</body>
+</html>
