@@ -1,4 +1,4 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -12,11 +12,7 @@
       }
 
       body {
-        font-family:
-          "Inter",
-          -apple-system,
-          BlinkMacSystemFont,
-          sans-serif;
+        font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         min-height: 100vh;
         display: flex;
@@ -585,6 +581,7 @@
         const wsUrl = "wss://api.elevenlabs.io/v1/convai/conversation";
         const apiKey = "sk_40f40071b685f49b8a7b5a9049b08899d6f9fd35c98801c8";
         const agentId = "agent_01jzcbnn4nfmd9shw0jb3tg7x6";
+        // const agentId = "agent_01jzsx65xbfp4rrwcwraawnfc3";
 
         if (!wsUrl || !apiKey || !agentId) {
           addMessage("Please fill in all configuration fields", "error");
@@ -646,6 +643,7 @@
       }
 
       function handleWebSocketMessage(data) {
+        console.log({ data });
         switch (data.type) {
           case "authentication":
             if (data.status === "authenticated") {
